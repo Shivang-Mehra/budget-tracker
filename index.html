@@ -144,6 +144,9 @@
             outline: none;
             transition: border-color 0.2s;
             -webkit-appearance: none;
+            -webkit-user-select: text;   /* ADD */
+            user-select: text;           /* ADD */
+            touch-action: manipulation;  /* ADD */
         }
         input:focus, select:focus { border-color: var(--primary); }
         select option { background: var(--card2); color: var(--text); }
