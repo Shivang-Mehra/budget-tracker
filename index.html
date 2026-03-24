@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Budget Tracker</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --primary: #a855f7;
+            --danger: #ef4444;
+            --bg: #0f0f1a;
+            --card: #1a1a2e;
+            --card2: #16213e;
+            --text: #e2e8f0;
+            --muted: #6b7280;
+            --border: #2d2d4e;
+            --header-bg: #1a1a2e;
+        }
+        body.theme-light {
+            --primary: #6366f1;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --card2: #f1f5f9;
+            --text: #1e293b;
+            --muted: #94a3b8;
+            --border: #e2e8f0;
+            --header-bg: #6366f1;
+        }
+        body.theme-midnight {
+            --primary: #38bdf8;
+            --bg: #020617;
+            --card: #0f172a;
+            --card2: #1e293b;
+            --text: #e2e8f0;
+            --muted: #475569;
+            --border: #1e293b;
+            --header-bg: #0f172a;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            transition: background 0.3s, color 0.3s;
+        }
+
+        /* Full-width header */
+        .header {
+            background: var(--header-bg);
+            border-bottom: 1px solid var(--border);
+            padding: 20px 24px 24px;
+            width: 100%;
+        }
+        .header h1 { font-size: 22px; font-weight: 700; color: white; }
+        .header .date { font-size: 13px; color: rgba(255,255,255,0.55); margin-top: 2px; }
+
+        /* Constrained wrapper for everything below the header */
+        .app-wrapper {
+            max-width: 430px;
+            margin: 0 auto;
+            padding-bottom: 80px;
+        }
+
+        .tabs {
+            display: flex;
+            background: var(--card);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            overflow: hidden;
+        }
+        .tab {
+            flex: 1;
+            padding: 12px 6px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--muted);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            white-space: nowrap;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .tab:hover { color: var(--primary); }
+
+        .content { padding: 16px; }
+        .view { display: none; }
+        .view.active { display: block; }
+
+        .card {
+            background: var(--card);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border: 1px solid var(--border);
+            box-shadow: 0 1px 6px rgba(0,0,0,0.25);
+        }
+        .card-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            margin-bottom: 12px;
+        }
+
+        .budget-amount { font-size: 42px; font-weight: 700; line-height: 1; color: var(--text); }
+        .budget-amount.over { color: var(--danger) !important; }
+        body:not(.theme-light) .budget-amount:not(.over) {
+            text-shadow: 0 0 28px color-mix(in srgb, var(--primary) 50%, transparent);
+        }
+        .budget-sub { font-size: 14px; color: var(--muted); margin-top: 4px; }
+
+        .progress-bar { height: 8px; background: var(--border); border-radius: 99px; overflow: hidden; margin-top: 14px; }
+        .progress-fill { height: 100%; border-radius: 99px; transition: width 0.4s, background 0.4s; }
+        .progress-labels { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+        .form-row { display: flex; gap: 10px; margin-bottom: 10px; }
+        input, select {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            font-size: 15px;
+            font-family: inherit;
+            color: var(--text);
+            background: var(--card2);
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        input:focus, select:focus { border-color: var(--primary); }
+        select option { background: var(--card2); }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: opacity 0.15s;
+        }
+        .btn:active { opacity: 0.75; }
+        .btn-danger { background: var(--danger); }
+        .btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--text); margin-bottom: 10px; }
+
+        .purchase-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .purchase-item:last-child { border-bottom: none; }
+        .purchase-info .name { font-weight: 600; font-size: 15px; }
+        .purchase-info .meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+        .purchase-amount { font-weight: 700; font-size: 16px; color: var(--danger); }
+        .delete-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 20px; padding: 4px 8px; margin-left: 6px; }
+        .category-pill { display: inline-block; background: var(--border); color: var(--muted); border-radius: 99px; padding: 2px 8px; font-size: 11px; }
+
+        .over-banner {
+            background: rgba(239,68,68,0.15);
+            border: 1px solid rgba(239,68,68,0.4);
+            color: #f87171;
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            font-size: 14px;
+            display: none;
+        }
+        body.theme-light .over-banner { background: #fef2f2; border-color: #fecaca; color: var(--danger); }
+
+        .budget-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+        .mini-card { background: var(--card); border-radius: 14px; padding: 16px; border: 1px solid var(--border); }
+        .mini-card .label { font-size: 12px; color: var(--muted); font-weight: 600; }
+        .mini-card .amount { font-size: 24px; font-weight: 700; margin-top: 4px; }
+        .mini-card .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+        .settings-row { margin-bottom: 14px; }
+        .settings-row label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+        .empty { text-align: center; color: var(--muted); padding: 20px 0; font-size: 14px; }
+
+        .theme-options { display: flex; gap: 10px; }
+        .theme-btn {
+            flex: 1; padding: 10px;
+            border-radius: 10px;
+            border: 2px solid var(--border);
+            cursor: pointer; font-size: 12px; font-weight: 600;
+            text-align: center; background: var(--card2);
+            color: var(--text); font-family: inherit;
+            user-select: none; -webkit-user-select: none;
+        }
+        .theme-btn.active { border-color: var(--primary); color: var(--primary); }
+
+        .fx-result-box { background: var(--card2); border-radius: 12px; overflow: hidden; margin-top: 14px; border: 1px solid var(--border); }
+        .fx-row { display: flex; justify-content: space-between; align-items: center; padding: 13px 16px; border-bottom: 1px solid var(--border); }
+        .fx-row:last-child { border-bottom: none; }
+        .fx-left { display: flex; align-items: center; gap: 10px; }
+        .fx-flag { font-size: 22px; }
+        .fx-label { font-size: 13px; color: var(--muted); }
+        .fx-currency-code { font-weight: 700; font-size: 15px; }
+        .fx-value { font-weight: 700; font-size: 20px; color: var(--primary); }
+        .fx-rate-note { font-size: 11px; color: var(--muted); text-align: center; padding: 10px; }
+        .loading-text { color: var(--muted); text-align: center; padding: 20px; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+<!-- Header is OUTSIDE app-wrapper so it spans full screen width -->
+<div class="header">
+    <h1>💰 Budget Tracker</h1>
+    <div class="date" id="headerDate"></div>
+</div>
+
+<!-- Everything else is constrained to phone width -->
+<div class="app-wrapper">
+
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('today')">Today</div>
+        <div class="tab" onclick="switchTab('week')">Week</div>
+        <div class="tab" onclick="switchTab('month')">Month</div>
+        <div class="tab" onclick="switchTab('currency')">💱 FX</div>
+        <div class="tab" onclick="switchTab('settings')">⚙️</div>
+    </div>
+
+    <div class="content">
+
+        <!-- TODAY -->
+        <div class="view active" id="view-today">
+            <div id="daily-over-banner" class="over-banner">⚠️ You've gone over your daily limit!</div>
+            <div class="card">
+                <div class="card-title">Daily Budget</div>
+                <div class="budget-amount" id="daily-remaining">£0.00</div>
+                <div class="budget-sub" id="daily-sub">remaining today</div>
+                <div class="progress-bar"><div class="progress-fill" id="daily-progress"></div></div>
+                <div class="progress-labels">
+                    <span id="daily-spent-label">Spent: £0.00</span>
+                    <span id="daily-limit-label">Limit: £0.00</span>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title">Add Purchase</div>
+                <div class="form-row">
+                    <input type="text" id="purchase-name" placeholder="What did you buy?" />
+                </div>
+                <div class="form-row">
+                    <input type="number" id="purchase-amount" placeholder="Amount (£)" step="0.01" min="0" style="flex:1" />
+                    <select id="purchase-category" style="flex:1">
+                        <option value="General">General</option>
+                        <option value="Groceries">Groceries</option>
+                        <option value="Food & Drink">Food & Drink</option>
+                        <option value="Transport">Transport</option>
+                        <option value="Entertainment">Entertainment</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <button class="btn" onclick="addPurchase()">+ Add Purchase</button>
+            </div>
+            <div class="card">
+                <div class="card-title">Today's Purchases</div>
+                <div id="today-purchases-list"><div class="empty">No purchases yet today</div></div>
+            </div>
+        </div>
+
+        <!-- WEEK -->
+        <div class="view" id="view-week">
+            <div id="weekly-over-banner" class="over-banner">⚠️ You've gone over your weekly limit!</div>
+            <div class="card">
+                <div class="card-title">Weekly Budget</div>
+                <div class="budget-amount" id="weekly-remaining">£0.00</div>
+                <div class="budget-sub" id="weekly-sub">remaining this week</div>
+                <div class="progress-bar"><div class="progress-fill" id="weekly-progress"></div></div>
+                <div class="progress-labels">
+                    <span id="weekly-spent-label">Spent: £0.00</span>
+                    <span id="weekly-limit-label">Limit: £0.00</span>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title">This Week's Purchases</div>
+                <div id="week-purchases-list"><div class="empty">No purchases this week</div></div>
+            </div>
+        </div>
+
+        <!-- MONTH -->
+        <div class="view" id="view-month">
+            <div id="monthly-over-banner" class="over-banner">⚠️ You've gone over your monthly limit!</div>
+            <div class="budget-grid">
+                <div class="mini-card">
+                    <div class="label">Daily Avg</div>
+                    <div class="amount" id="monthly-daily-avg">£0</div>
+                    <div class="sub">spent per day</div>
+                </div>
+                <div class="mini-card">
+                    <div class="label">Days Left</div>
+                    <div class="amount" id="days-left">0</div>
+                    <div class="sub">in this month</div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title">Monthly Budget</div>
+                <div class="budget-amount" id="monthly-remaining">£0.00</div>
+                <div class="budget-sub" id="monthly-sub">remaining this month</div>
+                <div class="progress-bar"><div class="progress-fill" id="monthly-progress"></div></div>
+                <div class="progress-labels">
+                    <span id="monthly-spent-label">Spent: £0.00</span>
+                    <span id="monthly-limit-label">Limit: £0.00</span>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title">Spending by Category</div>
+                <div id="category-breakdown"><div class="empty">No spending yet this month</div></div>
+            </div>
+            <div class="card">
+                <div class="card-title">This Month's Purchases</div>
+                <div id="month-purchases-list"><div class="empty">No purchases this month</div></div>
+            </div>
+        </div>
+
+        <!-- CURRENCY -->
+        <div class="view" id="view-currency">
+            <div class="card">
+                <div class="card-title">Convert</div>
+                <div class="form-row">
+                    <input type="number" id="fx-amount" placeholder="Enter amount" step="0.01" min="0" style="flex:2" />
+                    <select id="fx-from" style="flex:1">
+                        <option value="GBP">£ GBP</option>
+                        <option value="EUR">€ EUR</option>
+                        <option value="USD">$ USD</option>
+                        <option value="INR">₹ INR</option>
+                    </select>
+                </div>
+                <button class="btn" onclick="convertCurrency()">Convert →</button>
+                <div id="fx-results"></div>
+            </div>
+            <div class="card">
+                <div class="card-title">Live Rates (1 unit)</div>
+                <div id="fx-reference"><div class="loading-text">Hit Convert to load live rates</div></div>
+            </div>
+        </div>
+
+        <!-- SETTINGS -->
+        <div class="view" id="view-settings">
+            <div class="card">
+                <div class="card-title">Theme</div>
+                <div class="theme-options">
+                    <button class="theme-btn" id="btn-theme-dark"     onclick="setTheme('dark')">🌙 Neon</button>
+                    <button class="theme-btn" id="btn-theme-midnight" onclick="setTheme('midnight')">🌊 Midnight</button>
+                    <button class="theme-btn" id="btn-theme-light"    onclick="setTheme('light')">☀️ Light</button>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title">Set Your Limits</div>
+                <div class="settings-row">
+                    <label>Daily Limit (£)</label>
+                    <input type="number" id="setting-daily" placeholder="e.g. 20" step="0.01" min="0" />
+                </div>
+                <div class="settings-row">
+                    <label>Weekly Limit (£)</label>
+                    <input type="number" id="setting-weekly" placeholder="e.g. 100" step="0.01" min="0" />
+                </div>
+                <div class="settings-row">
+                    <label>Monthly Limit (£)</label>
+                    <input type="number" id="setting-monthly" placeholder="e.g. 400" step="0.01" min="0" />
+                </div>
+                <button class="btn" onclick="saveLimits()">Save Limits ✅</button>
+            </div>
+            <div class="card">
+                <div class="card-title">Danger Zone</div>
+                <button class="btn btn-outline" onclick="clearToday()">Clear Today's Purchases</button>
+                <button class="btn btn-danger"  onclick="clearAll()">Clear All Data</button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    const fmt      = n  => '£' + Math.abs(n).toFixed(2);
+    const getToday = () => new Date().toISOString().slice(0, 10);
+
+    function getWeekStart() {
+        const d    = new Date();
+        const diff = d.getDate() - d.getDay() + (d.getDay() === 0 ? -6 : 1);
+        return new Date(new Date().setDate(diff)).toISOString().slice(0, 10);
+    }
+    function getMonthStart() {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`;
+    }
+
+    // ── STORAGE ──────────────────────────────────────────────────────
+    const loadData   = () => JSON.parse(localStorage.getItem('budget_purchases') || '[]');
+    const saveData   = d  => localStorage.setItem('budget_purchases', JSON.stringify(d));
+    const loadLimits = () => JSON.parse(localStorage.getItem('budget_limits') || '{"daily":0,"weekly":0,"monthly":0}');
+
+    function saveLimits() {
+        const limits = {
+            daily:   parseFloat(document.getElementById('setting-daily').value)   || 0,
+            weekly:  parseFloat(document.getElementById('setting-weekly').value)  || 0,
+            monthly: parseFloat(document.getElementById('setting-monthly').value) || 0,
+        };
+        localStorage.setItem('budget_limits', JSON.stringify(limits));
+        alert('Limits saved! ✅');
+        updateAll();
+    }
+
+    // ── THEME ─────────────────────────────────────────────────────────
+    function setTheme(theme) {
+        document.body.classList.remove('theme-light', 'theme-midnight');
+        if (theme === 'light')    document.body.classList.add('theme-light');
+        if (theme === 'midnight') document.body.classList.add('theme-midnight');
+        localStorage.setItem('budget_theme', theme);
+        document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+        const btn = document.getElementById('btn-theme-' + theme);
+        if (btn) btn.classList.add('active');
+    }
+
+    // ── CURRENCY ─────────────────────────────────────────────────────
+    const CURRENCIES = {
+        GBP: { symbol: '£', flag: '🇬🇧', name: 'British Pound' },
+        EUR: { symbol: '€', flag: '🇪🇺', name: 'Euro'          },
+        USD: { symbol: '$', flag: '🇺🇸', name: 'US Dollar'     },
+        INR: { symbol: '₹', flag: '🇮🇳', name: 'Indian Rupee'  },
+    };
+    let rateCache = {};
+
+    async function fetchRates(from) {
+        const cached = rateCache[from];
+        if (cached && Date.now() - cached.time < 600_000) return cached.rates;
+        const res  = await fetch(`https://api.frankfurter.app/latest?from=${from}`);
+        const data = await res.json();
+        rateCache[from] = { rates: data.rates, time: Date.now() };
+        return data.rates;
+    }
+
+    function fxRow(flag, code, name, symbol, value) {
+        return `
+        <div class="fx-row">
+            <div class="fx-left">
+                <span class="fx-flag">${flag}</span>
+                <div>
+                    <div class="fx-currency-code">${code}</div>
+                    <div class="fx-label">${name}</div>
+                </div>
+            </div>
+            <div class="fx-value">${symbol}${value}</div>
+        </div>`;
+    }
+
+    async function convertCurrency() {
+        const amount    = parseFloat(document.getElementById('fx-amount').value);
+        const from      = document.getElementById('fx-from').value;
+        const resultsEl = document.getElementById('fx-results');
+        const refEl     = document.getElementById('fx-reference');
+        if (!amount || amount <= 0) { alert('Enter a valid amount first.'); return; }
+        resultsEl.innerHTML = '<div class="loading-text">Fetching live rates...</div>';
+        try {
+            const rates   = await fetchRates(from);
+            const targets = Object.keys(CURRENCIES).filter(c => c !== from);
+            const now     = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            resultsEl.innerHTML = `
+                <div class="fx-result-box">
+                    ${targets.map(to => {
+                        const { symbol, flag, name } = CURRENCIES[to];
+                        const val = (amount * rates[to]).toFixed(to === 'INR' ? 0 : 2);
+                        return fxRow(flag, to, name, symbol, val);
+                    }).join('')}
+                    <div class="fx-rate-note">Live rates · fetched at ${now}</div>
+                </div>`;
+            refEl.innerHTML = `
+                <div class="fx-result-box">
+                    ${targets.map(to => {
+                        const { symbol, flag, name } = CURRENCIES[to];
+                        const val = rates[to].toFixed(to === 'INR' ? 2 : 4);
+                        return fxRow(flag, to, name, `1 ${from} = ${symbol}`, val);
+                    }).join('')}
+                </div>`;
+        } catch (e) {
+            resultsEl.innerHTML = '<div class="loading-text">⚠️ Couldn\'t fetch rates. Check your connection.</div>';
+        }
+    }
+
+    // ── ADD / DELETE ─────────────────────────────────────────────────
+    function addPurchase() {
+        const name     = document.getElementById('purchase-name').value.trim();
+        const amount   = parseFloat(document.getElementById('purchase-amount').value);
+        const category = document.getElementById('purchase-category').value;
+        if (!name)                  { alert('Please enter what you bought.'); return; }
+        if (!amount || amount <= 0) { alert('Please enter a valid amount.');  return; }
+        const data = loadData();
+        data.push({ id: Date.now(), name, amount, category, date: getToday() });
+        saveData(data);
+        document.getElementById('purchase-name').value   = '';
+        document.getElementById('purchase-amount').value = '';
+        updateAll();
+    }
+
+    function deletePurchase(id) {
+        if (!confirm('Delete this purchase?')) return;
+        saveData(loadData().filter(p => p.id !== id));
+        updateAll();
+    }
+
+    // ── RENDERING ────────────────────────────────────────────────────
+    function renderItem(p, showDate) {
+        return `
+        <div class="purchase-item">
+            <div class="purchase-info">
+                <div class="name">${p.name}</div>
+                <div class="meta">
+                    <span class="category-pill">${p.category}</span>
+                    ${showDate ? ' · ' + p.date : ''}
+                </div>
+            </div>
+            <div style="display:flex;align-items:center">
+                <div class="purchase-amount">-${fmt(p.amount)}</div>
+                <button class="delete-btn" onclick="deletePurchase(${p.id})">×</button>
+            </div>
+        </div>`;
+    }
+
+    function setProgress(id, pct, over) {
+        const el        = document.getElementById(id);
+        el.style.width  = Math.min(pct, 100) + '%';
+        el.style.background = over ? '#ef4444' : pct > 80 ? '#f59e0b' : '#22c55e';
+    }
+
+    // ── MAIN UPDATE ──────────────────────────────────────────────────
+    function updateAll() {
+        const data   = loadData();
+        const limits = loadLimits();
+        const today  = getToday();
+
+        const todayP  = data.filter(p => p.date === today);
+        const weekP   = data.filter(p => p.date >= getWeekStart());
+        const monthP  = data.filter(p => p.date >= getMonthStart());
+
+        const todaySpent   = todayP.reduce((s,p)  => s + p.amount, 0);
+        const weeklySpent  = weekP.reduce((s,p)   => s + p.amount, 0);
+        const monthlySpent = monthP.reduce((s,p)  => s + p.amount, 0);
+
+        const dailyOver   = limits.daily   > 0 && todaySpent   > limits.daily;
+        const weeklyOver  = limits.weekly  > 0 && weeklySpent  > limits.weekly;
+        const monthlyOver = limits.monthly > 0 && monthlySpent > limits.monthly;
+
+        // TODAY
+        const dEl = document.getElementById('daily-remaining');
+        dEl.textContent = dailyOver ? `-${fmt(limits.daily - todaySpent)}` : fmt(limits.daily - todaySpent);
+        dEl.className   = 'budget-amount' + (dailyOver ? ' over' : '');
+        document.getElementById('daily-sub').textContent           = dailyOver ? 'OVER daily budget!' : 'remaining today';
+        document.getElementById('daily-spent-label').textContent   = `Spent: ${fmt(todaySpent)}`;
+        document.getElementById('daily-limit-label').textContent   = `Limit: ${fmt(limits.daily)}`;
+        document.getElementById('daily-over-banner').style.display = dailyOver ? 'block' : 'none';
+        setProgress('daily-progress', limits.daily > 0 ? (todaySpent / limits.daily) * 100 : 0, dailyOver);
+        document.getElementById('today-purchases-list').innerHTML  =
+            todayP.length ? todayP.slice().reverse().map(p => renderItem(p, false)).join('') : '<div class="empty">No purchases yet today</div>';
+
+        // WEEK
+        const wEl = document.getElementById('weekly-remaining');
+        wEl.textContent = weeklyOver ? `-${fmt(limits.weekly - weeklySpent)}` : fmt(limits.weekly - weeklySpent);
+        wEl.className   = 'budget-amount' + (weeklyOver ? ' over' : '');
+        document.getElementById('weekly-sub').textContent           = weeklyOver ? 'OVER weekly budget!' : 'remaining this week';
+        document.getElementById('weekly-spent-label').textContent   = `Spent: ${fmt(weeklySpent)}`;
+        document.getElementById('weekly-limit-label').textContent   = `Limit: ${fmt(limits.weekly)}`;
+        document.getElementById('weekly-over-banner').style.display = weeklyOver ? 'block' : 'none';
+        setProgress('weekly-progress', limits.weekly > 0 ? (weeklySpent / limits.weekly) * 100 : 0, weeklyOver);
+        document.getElementById('week-purchases-list').innerHTML    =
+            weekP.length ? weekP.slice().reverse().map(p => renderItem(p, true)).join('') : '<div class="empty">No purchases this week</div>';
+
+        // MONTH
+        const mEl = document.getElementById('monthly-remaining');
+        mEl.textContent = monthlyOver ? `-${fmt(limits.monthly - monthlySpent)}` : fmt(limits.monthly - monthlySpent);
+        mEl.className   = 'budget-amount' + (monthlyOver ? ' over' : '');
+        document.getElementById('monthly-sub').textContent           = monthlyOver ? 'OVER monthly budget!' : 'remaining this month';
+        document.getElementById('monthly-spent-label').textContent   = `Spent: ${fmt(monthlySpent)}`;
+        document.getElementById('monthly-limit-label').textContent   = `Limit: ${fmt(limits.monthly)}`;
+        document.getElementById('monthly-over-banner').style.display = monthlyOver ? 'block' : 'none';
+        setProgress('monthly-progress', limits.monthly > 0 ? (monthlySpent / limits.monthly) * 100 : 0, monthlyOver);
+
+        const now = new Date();
+        const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        document.getElementById('days-left').textContent         = daysInMonth - now.getDate();
+        document.getElementById('monthly-daily-avg').textContent = '£' + (monthlySpent / Math.max(now.getDate(), 1)).toFixed(0);
+
+        const cats = {};
+        monthP.forEach(p => { cats[p.category] = (cats[p.category] || 0) + p.amount; });
+        document.getElementById('category-breakdown').innerHTML =
+            Object.keys(cats).length
+                ? Object.entries(cats).sort((a,b) => b[1]-a[1]).map(([cat, amt]) => `
+                    <div class="purchase-item">
+                        <div class="name">${cat}</div>
+                        <div class="purchase-amount">${fmt(amt)}</div>
+                    </div>`).join('')
+                : '<div class="empty">No spending yet this month</div>';
+
+        document.getElementById('month-purchases-list').innerHTML =
+            monthP.length ? monthP.slice().reverse().map(p => renderItem(p, true)).join('') : '<div class="empty">No purchases this month</div>';
+
+        // Repopulate settings fields
+        const lim = loadLimits();
+        if (lim.daily)   document.getElementById('setting-daily').value   = lim.daily;
+        if (lim.weekly)  document.getElementById('setting-weekly').value  = lim.weekly;
+        if (lim.monthly) document.getElementById('setting-monthly').value = lim.monthly;
+    }
+
+    // ── TABS ─────────────────────────────────────────────────────────
+    function switchTab(name) {
+        const names = ['today', 'week', 'month', 'currency', 'settings'];
+        document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', names[i] === name));
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        document.getElementById('view-' + name).classList.add('active');
+    }
+
+    // ── CLEAR ────────────────────────────────────────────────────────
+    function clearToday() {
+        if (!confirm("Clear all of today's purchases?")) return;
+        saveData(loadData().filter(p => p.date !== getToday()));
+        updateAll();
+    }
+    function clearAll() {
+        if (!confirm('Delete ALL data? This cannot be undone.')) return;
+        localStorage.removeItem('budget_purchases');
+        localStorage.removeItem('budget_limits');
+        updateAll();
+    }
+
+    // ── INIT ─────────────────────────────────────────────────────────
+    // Set theme first
+    setTheme(localStorage.getItem('budget_theme') || 'dark');
+
+    // Set header date
+    const initDate = new Date();
+    const dayNames   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    document.getElementById('headerDate').textContent =
+        `${dayNames[initDate.getDay()]}, ${initDate.getDate()} ${monthNames[initDate.getMonth()]} ${initDate.getFullYear()}`;
+
+    // Load data
+    updateAll();
+</script>
+
+</body>
+</html>
