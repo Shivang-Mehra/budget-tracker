@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1a1a2e">
+    <title>Food Tracker</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --primary: #a855f7;
+            --cal-color: #f59e0b;
+            --pro-color: #22c55e;
+            --danger: #ef4444;
+            --bg: #0f0f1a;
+            --card: #1a1a2e;
+            --card2: #16213e;
+            --text: #e2e8f0;
+            --muted: #6b7280;
+            --border: #2d2d4e;
+            --header-bg: #1a1a2e;
+        }
+        body.theme-light {
+            --primary: #6366f1;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --card2: #f1f5f9;
+            --text: #1e293b;
+            --muted: #94a3b8;
+            --border: #e2e8f0;
+            --header-bg: #6366f1;
+        }
+        body.theme-midnight {
+            --primary: #38bdf8;
+            --bg: #020617;
+            --card: #0f172a;
+            --card2: #1e293b;
+            --text: #e2e8f0;
+            --muted: #475569;
+            --border: #1e293b;
+            --header-bg: #0f172a;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        .header {
+            width: 100%;
+            background: var(--header-bg);
+            border-bottom: 1px solid var(--border);
+            padding: 20px 24px 22px;
+            padding-top: calc(20px + env(safe-area-inset-top));
+        }
+        .header h1   { font-size: 22px; font-weight: 700; color: white; }
+        .header .date { font-size: 13px; color: rgba(255,255,255,0.5); margin-top: 3px; }
+
+        .tab-bar {
+            width: 100%;
+            background: var(--card);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .tab-bar-inner {
+            max-width: 430px;
+            margin: 0 auto;
+            display: flex;
+        }
+        .tab {
+            flex: 1;
+            padding: 13px 4px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--muted);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            white-space: nowrap;
+            user-select: none;
+            -webkit-user-select: none;
+            transition: color 0.15s;
+        }
+        .tab:hover  { color: var(--primary); }
+        .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+        .content-wrapper {
+            max-width: 430px;
+            margin: 0 auto;
+            padding: 16px 16px 80px;
+        }
+
+        .view { display: none; }
+        .view.active { display: block; }
+
+        .card {
+            background: var(--card);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border: 1px solid var(--border);
+            box-shadow: 0 1px 6px rgba(0,0,0,0.2);
+        }
+        .card-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.7px;
+            margin-bottom: 14px;
+        }
+
+        /* ── TWO STAT BLOCKS SIDE BY SIDE ── */
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+        .stat-card {
+            border-radius: 16px;
+            padding: 18px;
+            border: 1px solid var(--border);
+            background: var(--card);
+        }
+        .stat-card .s-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px; }
+        .stat-card .s-value { font-size: 36px; font-weight: 700; line-height: 1; }
+        .stat-card .s-sub   { font-size: 13px; color: var(--muted); margin-top: 4px; }
+        .stat-card.calories .s-label { color: var(--cal-color); }
+        .stat-card.protein  .s-label { color: var(--pro-color); }
+        .stat-card.calories .s-value { color: var(--cal-color); }
+        .stat-card.protein  .s-value { color: var(--pro-color); }
+        body:not(.theme-light) .stat-card.calories .s-value {
+            text-shadow: 0 0 28px color-mix(in srgb, var(--cal-color) 45%, transparent);
+        }
+        body:not(.theme-light) .stat-card.protein .s-value {
+            text-shadow: 0 0 28px color-mix(in srgb, var(--pro-color) 45%, transparent);
+        }
+        .stat-card .s-value.over { color: var(--danger) !important; text-shadow: none !important; }
+
+        .progress-bar { height: 8px; background: var(--border); border-radius: 99px; overflow: hidden; margin-top: 12px; }
+        .progress-fill { height: 100%; border-radius: 99px; transition: width 0.4s, background 0.4s; width: 0%; }
+        .progress-labels { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+        .over-banner {
+            background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.35);
+            color: #f87171; border-radius: 10px; padding: 12px 16px;
+            margin-bottom: 16px; font-weight: 600; font-size: 14px; display: none;
+        }
+        body.theme-light .over-banner { background: #fef2f2; border-color: #fecaca; color: var(--danger); }
+
+        .form-row { display: flex; gap: 10px; margin-bottom: 10px; }
+        input, select {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            font-size: 15px;
+            font-family: inherit;
+            color: var(--text);
+            background: var(--card2);
+            outline: none;
+            transition: border-color 0.2s;
+            -webkit-appearance: none;
+        }
+        input:focus, select:focus { border-color: var(--primary); }
+        select option { background: var(--card2); color: var(--text); }
+
+        .btn {
+            width: 100%; padding: 14px;
+            background: var(--primary); color: white;
+            border: none; border-radius: 10px;
+            font-size: 16px; font-weight: 600;
+            cursor: pointer; font-family: inherit;
+            transition: opacity 0.15s;
+        }
+        .btn:active { opacity: 0.75; }
+        .btn-danger  { background: var(--danger); }
+        .btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--text); margin-bottom: 10px; }
+
+        .food-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .food-item:last-child { border-bottom: none; }
+        .food-info .f-name { font-weight: 600; font-size: 15px; }
+        .food-info .f-meta { font-size: 12px; color: var(--muted); margin-top: 3px; }
+        .f-macros { text-align: right; }
+        .f-cal  { font-weight: 700; font-size: 15px; color: var(--cal-color); }
+        .f-pro  { font-size: 12px; color: var(--pro-color); margin-top: 2px; }
+        .delete-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 20px; padding: 4px 8px; margin-left: 4px; }
+        .pill { display: inline-block; background: var(--border); color: var(--muted); border-radius: 99px; padding: 2px 8px; font-size: 11px; }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+        .mini-card { background: var(--card); border-radius: 14px; padding: 16px; border: 1px solid var(--border); }
+        .mini-card .m-label  { font-size: 12px; color: var(--muted); font-weight: 600; }
+        .mini-card .m-amount { font-size: 22px; font-weight: 700; margin-top: 4px; }
+        .mini-card .m-sub    { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+        .settings-row { margin-bottom: 14px; }
+        .settings-row label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+        .settings-hint { font-size: 12px; color: var(--muted); margin-top: -8px; margin-bottom: 14px; }
+        .empty { text-align: center; color: var(--muted); padding: 20px 0; font-size: 14px; }
+
+        .theme-options { display: flex; gap: 10px; }
+        .theme-btn {
+            flex: 1; padding: 10px; border-radius: 10px;
+            border: 2px solid var(--border); cursor: pointer;
+            font-size: 12px; font-weight: 600; text-align: center;
+            background: var(--card2); color: var(--text); font-family: inherit;
+            user-select: none; transition: border-color 0.2s, color 0.2s;
+        }
+        .theme-btn.active { border-color: var(--primary); color: var(--primary); }
+
+        .app-link {
+            display: block;
+            text-align: center;
+            padding: 14px;
+            background: var(--card2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--primary);
+            font-weight: 600;
+            font-size: 15px;
+            text-decoration: none;
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>🥗 Food Tracker</h1>
+    <div class="date" id="headerDate"></div>
+</div>
+
+<div class="tab-bar">
+    <div class="tab-bar-inner">
+        <div class="tab active" data-tab="today">Today</div>
+        <div class="tab" data-tab="week">Week</div>
+        <div class="tab" data-tab="month">Month</div>
+        <div class="tab" data-tab="settings">⚙️</div>
+    </div>
+</div>
+
+<div class="content-wrapper">
+
+    <!-- TODAY -->
+    <div class="view active" id="view-today">
+        <div id="cal-over-banner" class="over-banner">⚠️ You've gone over your calorie limit!</div>
+
+        <div class="stat-grid">
+            <div class="stat-card calories">
+                <div class="s-label">Calories</div>
+                <div class="s-value" id="cal-remaining">0</div>
+                <div class="s-sub"  id="cal-sub">remaining</div>
+                <div class="progress-bar"><div class="progress-fill" id="cal-progress"></div></div>
+                <div class="progress-labels">
+                    <span id="cal-eaten-label">Eaten: 0</span>
+                    <span id="cal-limit-label">Goal: 0</span>
+                </div>
+            </div>
+            <div class="stat-card protein">
+                <div class="s-label">Protein</div>
+                <div class="s-value" id="pro-today">0g</div>
+                <div class="s-sub"  id="pro-sub">of goal</div>
+                <div class="progress-bar"><div class="progress-fill" id="pro-progress"></div></div>
+                <div class="progress-labels">
+                    <span id="pro-eaten-label">So far: 0g</span>
+                    <span id="pro-limit-label">Goal: 0g</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Add Food</div>
+            <div class="form-row">
+                <input type="text" id="food-name" placeholder="Food name" />
+            </div>
+            <div class="form-row">
+                <input type="number" id="food-calories" placeholder="Calories" min="0" style="flex:1" />
+                <input type="number" id="food-protein"  placeholder="Protein (g)" min="0" step="0.1" style="flex:1" />
+            </div>
+            <div class="form-row">
+                <select id="food-meal">
+                    <option>Breakfast</option>
+                    <option>Lunch</option>
+                    <option>Dinner</option>
+                    <option>Snack</option>
+                </select>
+            </div>
+            <button class="btn" id="btn-add">+ Add Food</button>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Today's Food</div>
+            <div id="today-food-list"><div class="empty">No food logged yet today</div></div>
+        </div>
+    </div>
+
+    <!-- WEEK -->
+    <div class="view" id="view-week">
+        <div class="grid-2">
+            <div class="mini-card">
+                <div class="m-label">Avg Calories</div>
+                <div class="m-amount" id="week-avg-cal" style="color:var(--cal-color)">0</div>
+                <div class="m-sub">per day this week</div>
+            </div>
+            <div class="mini-card">
+                <div class="m-label">Avg Protein</div>
+                <div class="m-amount" id="week-avg-pro" style="color:var(--pro-color)">0g</div>
+                <div class="m-sub">per day this week</div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title">Weekly Totals</div>
+            <div class="progress-labels" style="margin-bottom:8px">
+                <span style="color:var(--cal-color);font-weight:700">🔥 Calories</span>
+                <span id="week-total-cal" style="font-weight:700">0 kcal</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" id="week-cal-progress" style="background:var(--cal-color)"></div></div>
+            <div class="progress-labels" style="margin-top:6px;margin-bottom:16px">
+                <span id="week-cal-vs-goal"></span>
+            </div>
+            <div class="progress-labels" style="margin-bottom:8px">
+                <span style="color:var(--pro-color);font-weight:700">💪 Protein</span>
+                <span id="week-total-pro" style="font-weight:700">0g</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" id="week-pro-progress" style="background:var(--pro-color)"></div></div>
+            <div class="progress-labels" style="margin-top:6px">
+                <span id="week-pro-vs-goal"></span>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title">This Week's Food</div>
+            <div id="week-food-list"><div class="empty">No food logged this week</div></div>
+        </div>
+    </div>
+
+    <!-- MONTH -->
+    <div class="view" id="view-month">
+        <div class="grid-2">
+            <div class="mini-card">
+                <div class="m-label">Avg Calories</div>
+                <div class="m-amount" id="month-avg-cal" style="color:var(--cal-color)">0</div>
+                <div class="m-sub">per day this month</div>
+            </div>
+            <div class="mini-card">
+                <div class="m-label">Avg Protein</div>
+                <div class="m-amount" id="month-avg-pro" style="color:var(--pro-color)">0g</div>
+                <div class="m-sub">per day this month</div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title">Monthly Totals</div>
+            <div class="progress-labels" style="margin-bottom:8px">
+                <span style="color:var(--cal-color);font-weight:700">🔥 Calories</span>
+                <span id="month-total-cal" style="font-weight:700">0 kcal</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" id="month-cal-progress" style="background:var(--cal-color)"></div></div>
+            <div class="progress-labels" style="margin-top:6px;margin-bottom:16px">
+                <span id="month-cal-vs-goal"></span>
+            </div>
+            <div class="progress-labels" style="margin-bottom:8px">
+                <span style="color:var(--pro-color);font-weight:700">💪 Protein</span>
+                <span id="month-total-pro" style="font-weight:700">0g</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" id="month-pro-progress" style="background:var(--pro-color)"></div></div>
+            <div class="progress-labels" style="margin-top:6px">
+                <span id="month-pro-vs-goal"></span>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title">Breakdown by Meal</div>
+            <div id="meal-breakdown"><div class="empty">No food logged this month</div></div>
+        </div>
+        <div class="card">
+            <div class="card-title">This Month's Food</div>
+            <div id="month-food-list"><div class="empty">No food logged this month</div></div>
+        </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="view" id="view-settings">
+        <a class="app-link" href="index.html">💰 Switch to Budget Tracker</a>
+        <div class="card">
+            <div class="card-title">Theme</div>
+            <div class="theme-options">
+                <button class="theme-btn" data-theme="dark">🌙 Neon</button>
+                <button class="theme-btn" data-theme="midnight">🌊 Midnight</button>
+                <button class="theme-btn" data-theme="light">☀️ Light</button>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title">Daily Goals</div>
+            <div class="settings-row">
+                <label>Calorie Limit (kcal)</label>
+                <input type="number" id="setting-calories" placeholder="e.g. 2000" min="0" />
+            </div>
+            <p class="settings-hint">Counts down — shows how many you have left</p>
+            <div class="settings-row">
+                <label>Protein Goal (g)</label>
+                <input type="number" id="setting-protein" placeholder="e.g. 150" min="0" />
+            </div>
+            <p class="settings-hint">Counts up — shows progress toward your goal</p>
+            <button class="btn" id="btn-save-goals">Save Goals ✅</button>
+        </div>
+        <div class="card">
+            <div class="card-title">Danger Zone</div>
+            <button class="btn btn-outline" id="btn-clear-today">Clear Today's Log</button>
+            <button class="btn btn-danger"  id="btn-clear-all">Clear All Data</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+// ── UTILS ────────────────────────────────────────────────────────────
+const getToday = () => new Date().toISOString().slice(0, 10);
+
+function getWeekStart() {
+    const d = new Date();
+    const day = d.getDay() === 0 ? 7 : d.getDay();
+    d.setDate(d.getDate() - day + 1);
+    return d.toISOString().slice(0, 10);
+}
+function getMonthStart() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`;
+}
+function uniqueDays(entries) {
+    return new Set(entries.map(e => e.date)).size;
+}
+
+// ── STORAGE ──────────────────────────────────────────────────────────
+const loadData  = () => JSON.parse(localStorage.getItem('food_log')   || '[]');
+const saveData  = d  => localStorage.setItem('food_log', JSON.stringify(d));
+const loadGoals = () => JSON.parse(localStorage.getItem('food_goals') || '{"calories":0,"protein":0}');
+
+// ── TABS ─────────────────────────────────────────────────────────────
+function switchTab(name) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+    document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + name));
+}
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
+
+// ── THEME ─────────────────────────────────────────────────────────────
+function setTheme(theme) {
+    document.body.classList.remove('theme-light', 'theme-midnight');
+    if (theme === 'light')    document.body.classList.add('theme-light');
+    if (theme === 'midnight') document.body.classList.add('theme-midnight');
+    localStorage.setItem('food_theme', theme);
+    document.querySelectorAll('.theme-btn').forEach(b => b.classList.toggle('active', b.dataset.theme === theme));
+}
+document.querySelectorAll('.theme-btn').forEach(b => b.addEventListener('click', () => setTheme(b.dataset.theme)));
+
+// ── GOALS ─────────────────────────────────────────────────────────────
+document.getElementById('btn-save-goals').addEventListener('click', () => {
+    const goals = {
+        calories: parseFloat(document.getElementById('setting-calories').value) || 0,
+        protein:  parseFloat(document.getElementById('setting-protein').value)  || 0,
+    };
+    localStorage.setItem('food_goals', JSON.stringify(goals));
+    alert('Goals saved! ✅');
+    updateAll();
+});
+
+// ── ADD / DELETE ──────────────────────────────────────────────────────
+document.getElementById('btn-add').addEventListener('click', () => {
+    const name     = document.getElementById('food-name').value.trim();
+    const calories = parseFloat(document.getElementById('food-calories').value) || 0;
+    const protein  = parseFloat(document.getElementById('food-protein').value)  || 0;
+    const meal     = document.getElementById('food-meal').value;
+    if (!name)                          { alert('Please enter a food name.'); return; }
+    if (calories === 0 && protein === 0){ alert('Please enter calories and/or protein.'); return; }
+    const data = loadData();
+    data.push({ id: Date.now(), name, calories, protein, meal, date: getToday() });
+    saveData(data);
+    document.getElementById('food-name').value     = '';
+    document.getElementById('food-calories').value = '';
+    document.getElementById('food-protein').value  = '';
+    updateAll();
+});
+
+function deleteEntry(id) {
+    if (!confirm('Delete this entry?')) return;
+    saveData(loadData().filter(e => e.id !== id));
+    updateAll();
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────
+function renderItem(e, showDate) {
+    return `<div class="food-item">
+        <div class="food-info">
+            <div class="f-name">${e.name}</div>
+            <div class="f-meta">
+                <span class="pill">${e.meal}</span>
+                ${showDate ? ' · ' + e.date : ''}
+            </div>
+        </div>
+        <div style="display:flex;align-items:center">
+            <div class="f-macros">
+                <div class="f-cal">${e.calories > 0 ? e.calories + ' kcal' : '—'}</div>
+                <div class="f-pro">${e.protein  > 0 ? e.protein  + 'g protein' : ''}</div>
+            </div>
+            <button class="delete-btn" onclick="deleteEntry(${e.id})">×</button>
+        </div>
+    </div>`;
+}
+
+function setBar(id, pct, color) {
+    const el = document.getElementById(id);
+    el.style.width      = Math.min(pct, 100) + '%';
+    el.style.background = color || (pct > 100 ? 'var(--danger)' : pct > 85 ? 'var(--cal-color)' : 'var(--pro-color)');
+}
+
+// ── MAIN UPDATE ───────────────────────────────────────────────────────
+function updateAll() {
+    const data  = loadData();
+    const goals = loadGoals();
+    const today = getToday();
+
+    const todayE = data.filter(e => e.date === today);
+    const weekE  = data.filter(e => e.date >= getWeekStart());
+    const monthE = data.filter(e => e.date >= getMonthStart());
+
+    const sum = (arr, key) => arr.reduce((s, e) => s + (e[key] || 0), 0);
+
+    const todayCal = sum(todayE, 'calories');
+    const todayPro = sum(todayE, 'protein');
+    const weekCal  = sum(weekE,  'calories');
+    const weekPro  = sum(weekE,  'protein');
+    const monthCal = sum(monthE, 'calories');
+    const monthPro = sum(monthE, 'protein');
+
+    const calOver = goals.calories > 0 && todayCal > goals.calories;
+    const proMet  = goals.protein  > 0 && todayPro >= goals.protein;
+
+    // TODAY — calories
+    const calRemaining = goals.calories - todayCal;
+    const calEl = document.getElementById('cal-remaining');
+    calEl.textContent = calOver ? `+${Math.abs(calRemaining)}` : calRemaining;
+    calEl.className   = 's-value' + (calOver ? ' over' : '');
+    document.getElementById('cal-sub').textContent        = calOver ? 'over limit!' : 'remaining';
+    document.getElementById('cal-eaten-label').textContent = `Eaten: ${todayCal}`;
+    document.getElementById('cal-limit-label').textContent = `Goal: ${goals.calories}`;
+    document.getElementById('cal-over-banner').style.display = calOver ? 'block' : 'none';
+    const calPct = goals.calories > 0 ? (todayCal / goals.calories) * 100 : 0;
+    setBar('cal-progress', calPct, calOver ? 'var(--danger)' : calPct > 85 ? 'var(--cal-color)' : 'var(--cal-color)');
+
+    // TODAY — protein
+    const proEl = document.getElementById('pro-today');
+    proEl.textContent = todayPro + 'g';
+    proEl.className   = 's-value';
+    document.getElementById('pro-sub').textContent         = proMet ? '✅ goal reached!' : `of ${goals.protein}g goal`;
+    document.getElementById('pro-eaten-label').textContent = `So far: ${todayPro}g`;
+    document.getElementById('pro-limit-label').textContent = `Goal: ${goals.protein}g`;
+    const proPct = goals.protein > 0 ? (todayPro / goals.protein) * 100 : 0;
+    setBar('pro-progress', proPct, proMet ? 'var(--pro-color)' : proPct > 50 ? 'var(--pro-color)' : '#3b82f6');
+
+    // TODAY — food list
+    document.getElementById('today-food-list').innerHTML =
+        todayE.length ? [...todayE].reverse().map(e => renderItem(e, false)).join('') : '<div class="empty">No food logged yet today</div>';
+
+    // WEEK
+    const weekDays = Math.max(uniqueDays(weekE), 1);
+    document.getElementById('week-avg-cal').textContent = Math.round(weekCal / weekDays);
+    document.getElementById('week-avg-pro').textContent = Math.round(weekPro / weekDays) + 'g';
+    document.getElementById('week-total-cal').textContent = weekCal + ' kcal';
+    document.getElementById('week-total-pro').textContent = weekPro + 'g';
+    const weekCalGoal = goals.calories * 7;
+    const weekProGoal = goals.protein  * 7;
+    document.getElementById('week-cal-vs-goal').textContent = weekCalGoal > 0 ? `${weekCal} of ${weekCalGoal} kcal weekly goal` : '';
+    document.getElementById('week-pro-vs-goal').textContent = weekProGoal > 0 ? `${weekPro}g of ${weekProGoal}g weekly goal` : '';
+    setBar('week-cal-progress', weekCalGoal > 0 ? (weekCal / weekCalGoal) * 100 : 0, 'var(--cal-color)');
+    setBar('week-pro-progress', weekProGoal > 0 ? (weekPro / weekProGoal) * 100 : 0, 'var(--pro-color)');
+    document.getElementById('week-food-list').innerHTML =
+        weekE.length ? [...weekE].reverse().map(e => renderItem(e, true)).join('') : '<div class="empty">No food logged this week</div>';
+
+    // MONTH
+    const monthDays = Math.max(uniqueDays(monthE), 1);
+    document.getElementById('month-avg-cal').textContent = Math.round(monthCal / monthDays);
+    document.getElementById('month-avg-pro').textContent = Math.round(monthPro / monthDays) + 'g';
+    document.getElementById('month-total-cal').textContent = monthCal + ' kcal';
+    document.getElementById('month-total-pro').textContent = monthPro + 'g';
+    const now = new Date();
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+    const monthCalGoal = goals.calories * daysInMonth;
+    const monthProGoal = goals.protein  * daysInMonth;
+    document.getElementById('month-cal-vs-goal').textContent = monthCalGoal > 0 ? `${monthCal} of ${monthCalGoal} kcal monthly goal` : '';
+    document.getElementById('month-pro-vs-goal').textContent = monthProGoal > 0 ? `${monthPro}g of ${monthProGoal}g monthly goal` : '';
+    setBar('month-cal-progress', monthCalGoal > 0 ? (monthCal / monthCalGoal) * 100 : 0, 'var(--cal-color)');
+    setBar('month-pro-progress', monthProGoal > 0 ? (monthPro / monthProGoal) * 100 : 0, 'var(--pro-color)');
+
+    // Meal breakdown
+    const meals = {};
+    monthE.forEach(e => {
+        if (!meals[e.meal]) meals[e.meal] = { calories: 0, protein: 0 };
+        meals[e.meal].calories += e.calories;
+        meals[e.meal].protein  += e.protein;
+    });
+    document.getElementById('meal-breakdown').innerHTML =
+        Object.keys(meals).length
+            ? Object.entries(meals).sort((a,b) => b[1].calories - a[1].calories).map(([meal, m]) => `
+                <div class="food-item">
+                    <div class="f-name">${meal}</div>
+                    <div class="f-macros">
+                        <div class="f-cal">${m.calories} kcal</div>
+                        <div class="f-pro">${m.protein.toFixed(0)}g protein</div>
+                    </div>
+                </div>`).join('')
+            : '<div class="empty">No food logged this month</div>';
+
+    document.getElementById('month-food-list').innerHTML =
+        monthE.length ? [...monthE].reverse().map(e => renderItem(e, true)).join('') : '<div class="empty">No food logged this month</div>';
+
+    // Repopulate settings
+    const g = loadGoals();
+    if (g.calories) document.getElementById('setting-calories').value = g.calories;
+    if (g.protein)  document.getElementById('setting-protein').value  = g.protein;
+}
+
+// ── CLEAR ─────────────────────────────────────────────────────────────
+document.getElementById('btn-clear-today').addEventListener('click', () => {
+    if (!confirm("Clear today's food log?")) return;
+    saveData(loadData().filter(e => e.date !== getToday()));
+    updateAll();
+});
+document.getElementById('btn-clear-all').addEventListener('click', () => {
+    if (!confirm('Delete ALL food data? This cannot be undone.')) return;
+    localStorage.removeItem('food_log');
+    localStorage.removeItem('food_goals');
+    updateAll();
+});
+
+// ── INIT ──────────────────────────────────────────────────────────────
+setTheme(localStorage.getItem('food_theme') || 'dark');
+
+const now = new Date();
+const dayNames   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+document.getElementById('headerDate').textContent =
+    `${dayNames[now.getDay()]}, ${now.getDate()} ${monthNames[now.getMonth()]} ${now.getFullYear()}`;
+
+updateAll();
+</script>
+</body>
+</html>
