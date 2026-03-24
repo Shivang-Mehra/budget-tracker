@@ -637,6 +637,7 @@ document.getElementById('headerDate').textContent =
     `${dayNames[now.getDay()]}, ${now.getDate()} ${monthNames[now.getMonth()]} ${now.getFullYear()}`;
 
 updateAll();
+fetchRates('GBP').catch(() => {}); // prefetch silently on load
 </script>
 </body>
 </html>
