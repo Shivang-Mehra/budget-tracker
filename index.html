@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a1a2e">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <title>Budget Tracker</title>
     <style>
@@ -54,6 +56,7 @@
             background: var(--header-bg);
             border-bottom: 1px solid var(--border);
             padding: 20px 24px 22px;
+            padding-top: calc(20px + env(safe-area-inset-top)); /* ADD THIS */
         }
         .header h1   { font-size: 22px; font-weight: 700; color: white; }
         .header .date { font-size: 13px; color: rgba(255,255,255,0.5); margin-top: 3px; }
